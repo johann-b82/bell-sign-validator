@@ -1,4 +1,4 @@
-# bell-sign-validator
+# Bell Sign Validator
 
 ## Description
 
