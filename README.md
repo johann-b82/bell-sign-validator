@@ -13,6 +13,18 @@ Features
 
 ## Requirements
 
+In order to use the app you need to install the following packages in your environment:
+
+- numpy
+- pandas
+- streamlit
+- streamlit_cropperjs
+- easyocr
+- streamlit_option_menu 
+- shutil
+- cv2
+- ast
+
 ## Installation
 
 ## License
