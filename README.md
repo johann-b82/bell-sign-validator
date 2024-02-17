@@ -19,11 +19,11 @@ In order to use the app you need to install the following packages in your envir
 - pandas
 - streamlit
 - streamlit_cropperjs
-- easyocr
-- streamlit_option_menu 
+- streamlit_option_menu
+- easyocr 
 - shutil
-- cv2
-- ast
+- opencv
+- AST
 
 ## Installation
 
