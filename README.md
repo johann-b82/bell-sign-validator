@@ -16,14 +16,17 @@ Features
 
 In order to use the app you need to install the following packages in your environment:
 
+to be installed via `pip install -r requirements.txt`
 - numpy
 - pandas
 - streamlit
 - streamlit_cropperjs
 - streamlit_option_menu
 - easyocr 
-- shutil
 - opencv
+
+via `apt install <package>`
+- shutil
 - AST
 
 ## Installation
