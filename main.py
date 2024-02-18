@@ -17,6 +17,8 @@ if 'processed_index' not in st.session_state:
     st.session_state['processed_index'] = 0
 if 'now' not in st.session_state:    
     st.session_state['now'] = datetime.now()
+if 'button_disabled' not in st.session_state:
+    st.session_state.button_disabled = False
 
 # Load settings
 # set input and output folders
@@ -48,6 +50,10 @@ output_folder= settings["Output"]
 processed_folder= settings["Processed"]
 validated_prefix = settings["Validated_Prefix"]
 supported_image_types = settings["Supported Image Types"]
+
+# check all directories
+check_settings_directories(settings)
+
 
 
 # OCR fuction 
@@ -265,31 +271,35 @@ elif selected=="Validierung":
     conImages=colImages.container(border=True)
 
     # Get Names Data Frame
-    csv_name = output_folder + filesInFolders[st.session_state['processed_index']].split(".")[0] + ".csv"
-    dfNames = pd.read_csv(csv_name)
+    if len(filesInFolders) > 0:
+        csv_name = output_folder + filesInFolders[st.session_state['processed_index']].split(".")[0] + ".csv"
+        dfNames = pd.read_csv(csv_name)
 
-    # Get Image and enrich with rectagle and Name on image
-    image = cv2.imread(processed_folder + filesInFolders[st.session_state['processed_index']])
-    image_show = names_on_image(dfNames, image)
-    conImages.image(image_show)
-    conImages.caption(filesInFolders[st.session_state['processed_index']])
+        # Get Image and enrich with rectagle and Name on image
+        image = cv2.imread(processed_folder + filesInFolders[st.session_state['processed_index']])
+        image_show = names_on_image(dfNames, image)
+        conImages.image(image_show)
+        conImages.caption(filesInFolders[st.session_state['processed_index']])
     
-    #conImages.image(processed_folder + filesInFolders[st.session_state['processed_index']], caption=filesInFolders[st.session_state['processed_index']])
+        #conImages.image(processed_folder + filesInFolders[st.session_state['processed_index']], caption=filesInFolders[st.session_state['processed_index']])
 
-    colNames.subheader("Namen")
-    conNames=colNames.container(border=True)
+        colNames.subheader("Namen")
+        conNames=colNames.container(border=True)
 
 
-#    conNames.write(csv_name)
+        # conNames.write(csv_name)
+        
+        # transform capitalize words, e.g. first latter as capital folowing as lower case
+        dfNames['Namen'] = dfNames['Namen'].str.capitalize()
+
+
+        dfFinal=conNames.data_editor(data=dfNames[['Namen','Confidence Level']], num_rows='dynamic')
+
+        if conNames.button("Validiert"):
+            dfFinal.to_csv(output_folder + validated_prefix,index=False)
     
-    # transform capitalize words, e.g. first latter as capital folowing as lower case
-    dfNames['Namen'] = dfNames['Namen'].str.capitalize()
-
-
-    dfFinal=conNames.data_editor(data=dfNames[['Namen','Confidence Level']], num_rows='dynamic')
-
-    if conNames.button("Validiert"):
-        dfFinal.to_csv(output_folder + validated_prefix,index=False)
+    else:
+        st.toast("Keine Bilder im processed Verzeichnis für die Validierung")
 
 elif selected=="Spende":
     st.write("##")
