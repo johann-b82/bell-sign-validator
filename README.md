@@ -29,7 +29,9 @@ via `apt install <package>`
 - shutil
 - AST
 
-## Installation
+## Run
+
+To run the app execute following command in terminal `streamlit run main.py`
 
 ## License
 
