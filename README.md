@@ -1,5 +1,3 @@
-# Instabell
-
 ![image](https://github.com/johann-b82/bell-sign-validator/assets/148913319/264aaf25-ad19-4253-ae8c-31eeaa762db9)
 
 
