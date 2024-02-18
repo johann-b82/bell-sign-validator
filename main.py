@@ -17,8 +17,13 @@ if 'processed_index' not in st.session_state:
     st.session_state['processed_index'] = 0
 if 'now' not in st.session_state:    
     st.session_state['now'] = datetime.now()
-if 'button_disabled' not in st.session_state:
-    st.session_state.button_disabled = False
+if 'button_ocr_start' not in st.session_state:
+    st.session_state.button_ocr_start_disabled = True
+if 'button_back_disabled' not in st.session_state:
+    st.session_state.button_back_disabled = True
+if 'button_forward_disabled' not in st.session_state:
+    st.session_state.button_forward_disabled = False
+
 
 # Load settings
 # set input and output folders
@@ -92,6 +97,16 @@ def names_on_image(dfnames, image):
                 st.toast("Rechteck oder Namen können auf dem Bild nicht richtig dargestellt werden")
     
     return image
+
+# disable "OCR starten" button in case the input folder is empty
+def disable_button_empty_dir (filesInInputFolder):
+    if len(filesInInputFolder) < 1:
+        st.session_state.button_ocr_start_disabled = True
+    else:
+        st.session_state.button_ocr_start_disabled = False      
+
+
+
 # Use the full page instead of a narrow central column
 st.set_page_config(layout="wide")
 st.markdown("`©️ Johann Bechtold, nicht für den kommerziellen Gebrauch gedacht. Bitte kontaktiere johann.bechtold@gmail.com für eine kommerzielle Lizenz`")
@@ -133,6 +148,8 @@ if selected=="OCR":
                     st.image(cropped_pic, output_format="PNG")
                     st.button("Bild sichern",help="Speiche das Bild im Input Verzeichnis")
     else:
+        st.session_state.button_ocr_start_disabled
+
         my_expander_folders = conOCR.expander("Verzeichnisse", expanded=False)
         with my_expander_folders:
             st.write("Input Verzeichnis:", input_folder)
@@ -164,12 +181,14 @@ if selected=="OCR":
     
     conOCR.write("##")
     colOCRButton, colProgress = conOCR.columns((1,4))
-    if colOCRButton.button("OCR starten",help="Starte die Texterkennung mit dem ausgewählten Input"):
+
+    filesInInputFolder = os.listdir(input_folder)
+    
+    disable_button_empty_dir(filesInInputFolder)
+
+    if colOCRButton.button("OCR starten",help="Starte die Texterkennung mit dem ausgewählten Input", disabled=st.session_state.button_ocr_start_disabled):
         if ocr_input_option=='Verzeichnis':
 
-            filesInInputFolder = os.listdir(input_folder)
-
-            
             progress_text = "OCR läuft"
             progressbar_ocr = colProgress.progress(0, text=progress_text)
             if len(filesInInputFolder) > 0:
@@ -201,12 +220,18 @@ if selected=="OCR":
                 # Move file from input to processed folder
                 shutil.move(image_input_path, image_processed_path)
 
+
+
                 progress=progressbar_step*iteration
                 progressbar_ocr.progress(progress, text=progress_text)
                 iteration+=1
             
             # successful execution of OCR
             st.toast('OCR erfolgreich durchgeführt, bitte output Verzeichnis prüfen.')
+            # Check again if emtpy
+            filesInInputFolder = os.listdir(input_folder)
+            disable_button_empty_dir(filesInInputFolder)
+            
             time.sleep(5)
             progressbar_ocr.empty()
 
@@ -225,6 +250,11 @@ if selected=="OCR":
 
                 # Move file from input to processed folder
                 shutil.move(image_input_path, image_processed_path)
+
+                # Check again if emtpy
+                filesInInputFolder = os.listdir(input_folder)
+                disable_button_empty_dir(filesInInputFolder)
+
                 progressbar_ocr.progress(100, text=progress_text)
                 time.sleep(5)
                 progressbar_ocr.empty()
@@ -234,7 +264,7 @@ if selected=="OCR":
 
 elif selected=="Validierung":
     
-    # Generell zwei Spalten Layout
+    # two columns design
     st.subheader("Bilder")
     conValidation = st.container(border=True)
     colVal1,colVal2 = conValidation.columns((2,1))
@@ -247,8 +277,9 @@ elif selected=="Validierung":
         dffilesInFolders["Name"]=dffilesInFolders["Datei"].str.split(".").str[0]
         dffilesInFolders["Typ"]=dffilesInFolders["Datei"].str.rsplit(".").str[-1]
         st.dataframe(dffilesInFolders["Name"],use_container_width=100)
-    
+
     colVal2Button1, colVal2Button2 = colVal2.columns((2))
+
     if colVal2Button1.button("Zurück",use_container_width=15):
         if st.session_state['processed_index'] > 0:
             st.session_state['processed_index'] = st.session_state['processed_index'] - 1
@@ -260,9 +291,11 @@ elif selected=="Validierung":
     if colVal2Button2.button("Vor",use_container_width=15):
         if st.session_state['processed_index'] == (len(dffilesInFolders) - 1):
             st.session_state['processed_index'] = (len(dffilesInFolders) - 1)
+
             st.toast("Ende der Liste erreicht")
         else:
-            st.session_state['processed_index']=st.session_state['processed_index'] + 1 
+            st.session_state['processed_index']=st.session_state['processed_index'] + 1
+
 
     #st.write(len(dffilesInFolders))
     # two column layout
@@ -272,12 +305,36 @@ elif selected=="Validierung":
 
     # Get Names Data Frame
     if len(filesInFolders) > 0:
-        csv_name = output_folder + filesInFolders[st.session_state['processed_index']].split(".")[0] + ".csv"
-        dfNames = pd.read_csv(csv_name)
+
+        # get values for validated and non validated csvs
+        csv_name_validated = output_folder + validated_prefix
+        if os.path.isfile(csv_name_validated):
+            df_validated_names = pd.read_csv(csv_name_validated)
+        else:
+            df_validated_names = pd.DataFrame(columns=['Namen','Confidence Level','Bildname','bbox'])
+            df_validated_names.to_csv(output_folder + validated_prefix,index=False)
+
+        csv_name_non_validated = output_folder + filesInFolders[st.session_state['processed_index']].split(".")[0] + ".csv"
+        if os.path.isfile(csv_name_non_validated):   
+            df_validated_non_validated_names = pd.read_csv(csv_name_non_validated)
+
+        # set image name to be checked
+        image_name = filesInFolders[st.session_state['processed_index']].split(".")[0]
+
+        # check if validated values exist, if yes take values fron validated csv else fron non validated
+        if image_name in df_validated_names['Bildname'].values:
+            image_name_list = image_name.split()
+            df_selected_names = df_validated_names[df_validated_names.isin(image_name_list).any(axis=1)]
+            validated_values_exist = True
+
+        else: 
+            df_selected_names = df_validated_non_validated_names
+            validated_values_exist = False
+
 
         # Get Image and enrich with rectagle and Name on image
         image = cv2.imread(processed_folder + filesInFolders[st.session_state['processed_index']])
-        image_show = names_on_image(dfNames, image)
+        image_show = names_on_image(df_selected_names, image)
         conImages.image(image_show)
         conImages.caption(filesInFolders[st.session_state['processed_index']])
     
@@ -286,17 +343,25 @@ elif selected=="Validierung":
         colNames.subheader("Namen")
         conNames=colNames.container(border=True)
 
-
-        # conNames.write(csv_name)
         
         # transform capitalize words, e.g. first latter as capital folowing as lower case
-        dfNames['Namen'] = dfNames['Namen'].str.capitalize()
+        df_selected_names['Namen'] = df_selected_names['Namen'].str.capitalize()
 
+        # change the final order of the columns
+        df_for_update_names=conNames.data_editor(data=df_selected_names[['Namen','Confidence Level','Bildname','bbox']], num_rows='dynamic')
 
-        dfFinal=conNames.data_editor(data=dfNames[['Namen','Confidence Level']], num_rows='dynamic')
+        if conNames.button("Validierte Namen speichern/updaten"):
 
-        if conNames.button("Validiert"):
-            dfFinal.to_csv(output_folder + validated_prefix,index=False)
+            if validated_values_exist:
+
+                #image_name_list = list(filesInFolders[st.session_state['processed_index']])
+                df_without_current_image = df_validated_names.loc[~df_validated_names.isin(image_name_list).any(axis=1)]
+
+                df_final = pd.concat([df_without_current_image, df_for_update_names], ignore_index=True)
+                df_final.to_csv(output_folder + validated_prefix,index=False)
+
+            else:
+                df_for_update_names.to_csv(output_folder + validated_prefix,index=False)
     
     else:
         st.toast("Keine Bilder im processed Verzeichnis für die Validierung")
