@@ -6,3 +6,4 @@ pandas==2.2.0
 streamlit==1.31.1
 streamlit-cropperjs==0.0.8
 streamlit-option-menu==0.3.12
+AST==0.0.2
